@@ -3,11 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ApiFormatter;
+use App\Models\InboundStuff;
+use App\Models\Lending;
 use App\Models\Stuff;
+use App\Models\StuffStock;
 use Illuminate\Http\Request;
 
 class StuffController extends Controller
 {
+    public function __construct()
+    {
+        
+        $this->middleware('auth:api');
+    }
     // memunculkan semua data
     public function index()
     {
@@ -97,16 +105,51 @@ public function update(Request $request, $id)
 
 public function destroy($id)
 {
-    try {
-        $checkProses = Stuff::where('id', $id)->delete();
+    // try {
+    //     $checkProses = Stuff::where('id', $id)->delete();
 
-        if ($checkProses){
-            return ApiFormatter::sendresponse(200, 'success', 'berhasil menghapus data stuff');
+    //     if ($checkProses){
+
+
+    //         return ApiFormatter::sendresponse(200, 'success', 'berhasil menghapus data stuff');
+    //     }
+    // } catch (\Exception $err) {
+    //     return ApiFormatter::sendresponse(400, 'bad request', $err->getMessage());
+    // }
+   
+    try {
+        $stuff = Stuff::where('id', $id)->first();
+
+        if ($stuff) {
+            $dataInbound = InboundStuff::where('stuff_id', $id)->first();
+
+            if ($dataInbound) {
+                return ApiFormatter::sendresponse(400, 'Bad Request', 'tidak bisa menghapus data stuff, sudah terdapat data inboundstuff.');
+            }
+            
+            $dataStuffStock = StuffStock::where('stuff_id', $id)->first();
+            if ($dataStuffStock) {
+                return ApiFormatter::sendresponse(400, 'Bad Request', 'tidak bisa menghapus data stuff, sudah terdapat data stuff stock.');
+            }
+
+            $dataLending = Lending::where('stuff_id', $id)->first();
+            if ($dataLending) {
+                return ApiFormatter::sendresponse(400, 'Bad Request', 'tidak bisa menghapus data stuff, sudah terdapat data lending.');
+            }
+
+            // Jika tidak ada data terkait, maka hapus stuff
+            $stuff = Stuff::where('id', $id)->delete();
+            return ApiFormatter::sendresponse(200, 'Success', 'berhasil menghapus data stuff.');
+        } else {
+            return ApiFormatter::sendresponse(404, 'Not Found', 'data stuff tidak ditemukan.');
         }
     } catch (\Exception $err) {
-        return ApiFormatter::sendresponse(400, 'bad request', $err->getMessage());
+        return ApiFormatter::sendresponse(500, 'bad request', $err->getMessage());
     }
 }
+
+
+    
 
 public function trash()
 {

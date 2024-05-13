@@ -20,6 +20,19 @@ $router->get('/', function () use ($router) {
     return $router->app->version();
 });
 
+$router->post('/login', 'AuthController@login');
+$router->get('/logout', 'AuthController@logout');
+$router->get('/profile', 'AuthController@me');
+
+
+$router->post('/lending/store', 'LendingController@store');
+$router->get('/lending/{id}', 'LendingController@show');
+$router->delete('/lending/delete/{id}', 'LendingController@destroy');
+
+
+$router->post('/restorations/{lending_id}', 'RestorationController@store');
+
+
 $router->group(['prefix' => 'stuff'], function() use ($router)
 {
     $router->get('/', 'stuffController@index');

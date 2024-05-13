@@ -12,6 +12,11 @@ use Illuminate\Support\str;
 
 class InboundStuffController extends Controller
 {
+    public function __construct()
+    {
+        
+        $this->middleware('auth:api');
+    }
    public function store(Request $request)
    {
     try {
@@ -111,30 +116,69 @@ class InboundStuffController extends Controller
 // }
 
 
-   public function destroy($id)
-   {
-    try {
-       $inboundData = InboundStuff::where('id', $id)->first();
-       //simpan data dari inbound yang diperlukan / akan digunakan nanti setelah delete
-       $stuffId = $inboundData['stuff_id'];
-       $totalInbound = $inboundData['total'];
-       $inboundData->delete();
-       
-        $dataStock = StuffStock::where('stuff_id', $inboundData['stuff_id'])->first();
-        $total_available = (int)$dataStock['total_available'] - (int)$totalInbound;
+//    public function destroy($id)
+//    {
+//     try {
+//        $inboundData = InboundStuff::where('id', $id)->first();
+//        //simpan data dari inbound yang diperlukan / akan digunakan nanti setelah delete
+//        $stuffId = $inboundData['stuff_id'];
+//        $totalInbound = $inboundData['total'];
+//        $inboundData->delete();
+        
 
-        $minusTotalStock = $dataStock->update(['total_available' => $total_available]);
+//         $dataStock = StuffStock::where('stuff_id', $inboundData['stuff_id'])->first();
+//         $total_available = (int)$dataStock['total_available'] - (int)$totalInbound;
+
+//         $minusTotalStock = $dataStock->update(['total_available' => $total_available]);
        
-       if ($minusTotalStock) {
-      $updatedStuffWithInboundAndStock = Stuff::where('id', $stuffId)->with('InboundStuff', 'StuffStock')->first();
-      //delete inbound terakhir agar data stuff_id di inbound bisa digunakan untuk mengambil data terbaru
+//        if ($minusTotalStock) {
+//       $updatedStuffWithInboundAndStock = Stuff::where('id', $stuffId)->with('InboundStuff', 'StuffStock')->first();
+//       //delete inbound terakhir agar data stuff_id di inbound bisa digunakan untuk mengambil data terbaru
       
-      return ApiFormatter::sendresponse(200, 'success', $updatedStuffWithInboundAndStock);
-       }
+//       return ApiFormatter::sendresponse(200, 'success', $updatedStuffWithInboundAndStock);
+//        }
+//     } catch (\Exception $err) {
+//         return ApiFormatter::sendresponse(400, 'bad request', $err->getMessage()); 
+//     }
+//    }
+
+public function destroy($id)
+{
+    try {
+        $inboundData = InboundStuff::where('id', $id)->first();
+        
+        // Simpan data dari inbound yang diperlukan / akan digunakan nanti setelah delete
+        $stuffId = $inboundData['stuff_id'];
+        $totalInbound = $inboundData['total'];
+        
+        // Get StuffStock data
+        $dataStock = StuffStock::where('stuff_id', $inboundData['stuff_id'])->first();
+        $totalAvailable = (int)$dataStock['total_available'];
+        
+        // Check if total_available is greater than or equal to total_inbound
+        if ($totalAvailable >= $totalInbound) {
+            // Delete InboundStuff
+            $inboundData->delete();
+            
+            // Update total_available in StuffStock
+            $totalAvailable -= (int)$totalInbound;
+            $dataStock->update(['total_available' => $totalAvailable]);
+            
+            // Fetch updated data for response
+            $updatedStuffWithInboundAndStock = Stuff::where('id', $stuffId)->with('InboundStuff', 'StuffStock')->first();
+            
+            // Return success response
+            return ApiFormatter::sendresponse(200, 'success', $updatedStuffWithInboundAndStock);
+        } else {
+            // Return error response if total_available is less than total_inbound
+            return ApiFormatter::sendresponse(400, 'bad request', 'jumlah total inbound yang akan dihapus lebih besar dari total available stuff saat ini .');
+        }
     } catch (\Exception $err) {
+        // Return error response for any exceptions
         return ApiFormatter::sendresponse(400, 'bad request', $err->getMessage()); 
     }
-   }
+}
+
    
    public function trash()
    {
